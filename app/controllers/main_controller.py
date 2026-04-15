@@ -101,6 +101,12 @@ class MainController:
             text_view=self.text_panel,
         )
 
+        self.vocabulary_controller = VocabularyController(
+            session=self.session,
+            search_view=self.search_panel,
+            vocabulary_view=self.vocabulary_panel,
+        )
+
         self.text_panel.translation_requested.connect(self._on_translation_requested)
         self.search_panel.gemini_requested.connect(self._open_gemini_window)
 

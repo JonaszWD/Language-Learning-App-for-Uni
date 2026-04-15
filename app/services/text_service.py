@@ -15,6 +15,7 @@ class TextService:
         if sentence != "":
             deepl_client = deepl.DeepLClient(os.getenv("DEEPL_KEY"))
             result = deepl_client.translate_text(sentence, source_lang="ES", target_lang="EN-GB").text
+            #result = deepl_client.translate_text(sentence, target_lang="EN-GB").text
         else:
             result = "Error, no sentence provided"
         print(result)

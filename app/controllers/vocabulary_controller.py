@@ -18,6 +18,7 @@ class VocabularyController:
         )
         if vocabs is None:
             return
+
         vocab_list = [(vocab.word, vocab.translation) for vocab in vocabs]
         self.vocabulary_view.set_vocabulary(vocab_list)
 
