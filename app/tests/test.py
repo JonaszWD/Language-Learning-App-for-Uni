@@ -1,19 +1,57 @@
-from app.services.vocabulary_service import VocabularyService
+from dotenv import load_dotenv
+load_dotenv("/Users/jojo/PycharmProjects/IntroToProgrammingProject/app/.env")
 
-story = "La casa de Rosa es vieja pero muy bonita. Está hecha de piedra y tiene muchas flores rojas en el jardín. En la cocina, hay un olor delicioso. Rosa está preparando una cena especial para su nieta. Vamos a cocinar juntas, dice Rosa. Ellas preparan una tortilla de patatas, que es la comida favorita de Elena. Elena corta las patatas y Rosa fríe las cebollas. Mientras cocinan, hablan de la familia y de los amigos. Rosa cuenta historias de cuando ella era niña y no había televisión ni internet. Elena escucha con mucha atención y ríe con las historias de su abuela"
-story_id = 6
-user_id = 6
-import re
+import boto3
+from contextlib import closing
+import tempfile
+import os
 
-def extract_words(text: str) -> list[str]:
-    """
-    Returns a list of clean unique words from the text,
-    stripped of punctuation, numbers and extra whitespace.
-    """
-    words = re.findall(r"[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]+", text)
-    return list(dict.fromkeys(words))
 
-for word in extract_words(story):
-    word_lower = word.lower()
-    VocabularyService.save(word_lower, user_id, story_id)
+class PollyTTS:
+    def __init__(self, region='us-east-1'):
+        self.polly = boto3.client(
+            'polly',
+            aws_access_key_id=os.getenv('POLLY_ACCESS_KEY'),
+            aws_secret_access_key=os.getenv('POLLY_SECRET_KEY'),
+            region_name='us-east-1',
+        )
+
+    def speak(self, text, voice='Lupe', engine='standard'):
+        """Speak text using Amazon Polly"""
+        response = self.polly.synthesize_speech(
+            Text=text,
+            OutputFormat='mp3',
+            VoiceId=voice,
+            Engine=engine
+        )
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
+            temp_file = fp.name
+            with closing(response["AudioStream"]) as stream:
+                fp.write(stream.read())
+
+        os.system(f"afplay {temp_file}")
+        os.remove(temp_file)
+
+    def list_spanish_voices(self):
+        """List all Spanish voices"""
+        for lang_code in ['es-ES', 'es-US', 'es-MX']:
+            response = self.polly.describe_voices(LanguageCode=lang_code)
+            for voice in response['Voices']:
+                print(f"{voice['Id']:15} - {voice['Gender']:6} - {voice['LanguageName']:15} - {voice['SupportedEngines']}")
+
+
+# Usage
+tts = PollyTTS()
+
+# List voices
+print("Available voices:")
+tts.list_spanish_voices()
+print()
+
+# Try different voices
+#tts.speak("Hola, soy Lucia. Me gusta la mañana.", voice='Lucia', engine="neural")
+#tts.speak("Hola, soy Sergio. Me gusta la mañana.", voice='Sergio', engine="neural")
+tts.speak("Hola, soy Mia. Me gusta la mañana.", voice='Mia', engine="neural")
+tts.speak("Hola, soy Andres. Me gusta la mañana.", voice='Andres', engine="neural")
 

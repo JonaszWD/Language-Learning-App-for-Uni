@@ -56,6 +56,23 @@ class SearchService:
             return repo.get_all_for_user(user_id)
 
     @staticmethod
+    def save_audio(post_id: int, user_id: int, audio_data: bytes) -> bool:
+        with get_db() as db:
+            repo = PostRepository(db)
+            return repo.update_audio(post_id, user_id, audio_data)
+
+    @staticmethod
+    def get_audio(post_id: int, user_id: int) -> bytes | None:
+        with get_db() as db:
+            repo = PostRepository(db)
+            post = repo.get_by_id(post_id, user_id)
+            if post is None:
+                return None
+            audio = post.audio_data
+            db.expunge(post)
+            return audio
+
+    @staticmethod
     def save(title: str, content: str, user_id: int) -> int:
         """
         Validates and saves a new post.

@@ -79,6 +79,14 @@ class PostRepository:
         self.db.refresh(post)  # reloads the object so generated fields like id are populated
         return post
 
+    def update_audio(self, post_id: int, user_id: int, audio_data: bytes) -> bool:
+        post = self.get_by_id(post_id, user_id)
+        if not post:
+            return False
+        post.audio_data = audio_data
+        self.db.flush()
+        return True
+
     # ── Delete ────────────────────────────────────────────────────────────────
 
     def delete(self, post_id: int, user_id: int) -> bool:

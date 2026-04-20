@@ -140,8 +140,8 @@ QPushButton#primary_btn:pressed {
 QPushButton#ghost_btn {
     background-color: transparent;
     color: #0071e3;
-    border: none;
     border-radius: 10px;
+    border: none;
     padding: 9px 18px;
     font-size: 13px;
     font-weight: 500;
@@ -153,6 +153,70 @@ QPushButton#ghost_btn:hover {
 
 QPushButton#ghost_btn:pressed {
     background-color: #e5e5ea;
+}
+
+QPushButton#ghost_btn:disabled {
+    color: #aeaeb2;
+    background-color: #f2f2f7;
+}
+
+
+/* ══════════════════════════════════════════════
+   Audio Progress Bar
+   ══════════════════════════════════════════════ */
+QProgressBar#audio_progress {
+    background-color: #e8e8ed;
+    border: none;
+    border-radius: 4px;
+    height: 8px;
+}
+
+QProgressBar#audio_progress::chunk {
+    background-color: #0071e3;
+    border-radius: 4px;
+}
+
+QProgressBar#audio_progress:disabled {
+    background-color: #e8e8ed;
+}
+
+QProgressBar#audio_progress:disabled::chunk {
+    background-color: #c7c7cc;
+}
+
+/* ══════════════════════════════════════════════
+   Speed Slider
+   ══════════════════════════════════════════════ */
+QSlider#speed_slider::groove:horizontal {
+    height: 4px;
+    background: #e5e5ea;
+    border-radius: 2px;
+}
+
+QSlider#speed_slider::handle:horizontal {
+    background: #0071e3;
+    border: none;
+    width: 12px;
+    height: 12px;
+    margin: -4px 0;
+    border-radius: 6px;
+}
+
+QSlider#speed_slider::sub-page:horizontal {
+    background: #0071e3;
+    border-radius: 2px;
+}
+
+QSlider#speed_slider:disabled::groove:horizontal {
+    background: #e5e5ea;
+}
+
+QSlider#speed_slider:disabled::handle:horizontal {
+    background: #c7c7cc;
+}
+
+QSlider#speed_slider:disabled::sub-page:horizontal {
+    background: #c7c7cc;
 }
 
 QPushButton#icon_btn {
