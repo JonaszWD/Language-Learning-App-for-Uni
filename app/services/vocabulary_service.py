@@ -26,6 +26,21 @@ class VocabularyService:
             return vocabs
 
     @staticmethod
+    def get_unexported_by_user_id(user_id: int) -> list[type[Vocabulary]]:
+        with get_db() as db:
+            repo = VocabularyRepository(db)
+            vocabs = repo.get_unexported_by_user(user_id)
+            for vocab in vocabs:
+                db.expunge(vocab)
+            return vocabs
+
+    @staticmethod
+    def mark_exported(vocab_ids: list[int]) -> None:
+        with get_db() as db:
+            repo = VocabularyRepository(db)
+            repo.mark_exported(vocab_ids)
+
+    @staticmethod
     def check_word(word: str, user_id: int) -> bool:
         with get_db() as db:
             repo = VocabularyRepository(db)

@@ -2,7 +2,7 @@ import os
 import deepl
 
 from dotenv import load_dotenv
-load_dotenv("/Users/jojo/PycharmProjects/IntroToProgrammingProject/app/.env")
+load_dotenv("/.env")
 
 class TextService:
 

@@ -119,7 +119,14 @@ class MainWindow(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         bar.addWidget(spacer)
 
-        # ── Right: user + logout ──────────────────────────────────────────────
+        # ── Right: Anki + user + logout ───────────────────────────────────────
+        self.anki_btn = QPushButton("⬇ Anki Deck")
+        self.anki_btn.setObjectName("ghost_btn")
+        self.anki_btn.setFixedHeight(30)
+        self.anki_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.anki_btn.setToolTip("Export all vocabulary as an Anki deck with audio")
+        bar.addWidget(self.anki_btn)
+
         user_label = QLabel(f"Logged in as  {self.session.username}")
         user_label.setObjectName("user_indicator")
         bar.addWidget(user_label)

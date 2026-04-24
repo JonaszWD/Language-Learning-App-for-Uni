@@ -3,7 +3,7 @@ from google import genai
 from google.genai.errors import ServerError
 
 from dotenv import load_dotenv
-load_dotenv("/Users/jojo/PycharmProjects/IntroToProgrammingProject/app/.env")
+load_dotenv("/Users/jojo/PycharmProjects/IntroToProgrammingProject/.env")
 
 class GeminiService:
     def __init__(self):

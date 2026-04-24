@@ -65,6 +65,22 @@ def run_pyqt() -> None:
 
 
 def main() -> None:
+    import os
+    from pathlib import Path
+    from dotenv import load_dotenv
+
+    # Get the directory where the executable is located
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        application_path = os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        application_path = os.path.dirname(os.path.abspath(__file__))
+
+    # Load .env from the executable's directory
+    dotenv_path = os.path.join(application_path, '.env')
+    load_dotenv(dotenv_path)
+
     run_migrations()
     run_pyqt()
 

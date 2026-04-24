@@ -1,71 +1,97 @@
 import os
-import time
-from contextlib import closing
+import subprocess
+import tempfile
 
-import boto3
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv("/Users/jojo/PycharmProjects/IntroToProgrammingProject/.env")
+
+_GEMINI_TTS_MODEL = 'gemini-3.1-flash-preview-tts'
 
 
 class PollyService:
     @staticmethod
-    def synthesize(text: str, voice: str = 'Lucia', engine: str = 'neural') -> bytes:
-        print("Polly service called")
-        """Synthesize Spanish speech and return raw MP3 bytes."""
-        polly = boto3.client(
-            'polly',
-            aws_access_key_id=os.getenv('POLLY_ACCESS_KEY'),
-            aws_secret_access_key=os.getenv('POLLY_SECRET_KEY'),
-            region_name=os.getenv('POLLY_REGION', 'eu-west-3'),
-        )
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=os.getenv('POLLY_ACCESS_KEY'),
-            aws_secret_access_key=os.getenv('POLLY_SECRET_KEY'),
-            region_name=os.getenv('POLLY_REGION', 'eu-west-3'),
-        )
+    def synthesize(text: str, voice: str = 'Aoede') -> bytes:
+        """Synthesize Spanish speech via Gemini TTS and return raw MP3 bytes."""
+        client = genai.Client(api_key=os.getenv('GEMINI_KEY'))
 
-        bucket_name = os.getenv('POLLY_S3_BUCKET')
-        if not bucket_name:
-            raise ValueError("POLLY_S3_BUCKET not found in .env file")
-
-        # Start the speech synthesis task
-        response = polly.start_speech_synthesis_task(
-            Text=text,
-            OutputFormat='mp3',
-            VoiceId=voice,
-            Engine=engine,
-            OutputS3BucketName=bucket_name,
-            OutputS3KeyPrefix='audio/'
+        response = client.models.generate_content(
+            model=_GEMINI_TTS_MODEL,
+            contents=text,
+            config=types.GenerateContentConfig(
+                response_modalities=['AUDIO'],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=voice,
+                        )
+                    )
+                ),
+            ),
         )
 
-        task_id = response['SynthesisTask']['TaskId']
-        print("creating audio file ...")
-        # Poll for task completion
-        while True:
-            print("...")
-            task_status = polly.get_speech_synthesis_task(TaskId=task_id)
-            status = task_status['SynthesisTask']['TaskStatus']
+        part = response.candidates[0].content.parts[0]
+        raw_audio = part.inline_data.data  # SDK already decodes from base64 — use bytes directly
+        mime = part.inline_data.mime_type
 
-            if status == 'completed':
-                # Extract S3 key from output URI
-                output_uri = task_status['SynthesisTask']['OutputUri']
-                s3_key = output_uri.split('.com/')[-1].split('?')[0]
-                s3_key = s3_key.replace(f'{bucket_name}/', '')
+        # If Gemini returned a WAV/RIFF container, convert it directly.
+        # If it returned raw L16 PCM, tell ffmpeg the encoding explicitly.
+        if raw_audio[:4] == b'RIFF' or 'wav' in mime.lower():
+            return PollyService._to_mp3_from_wav(raw_audio)
 
-                # Download the file from S3
-                response = s3.get_object(Bucket=bucket_name, Key=s3_key)
-                audio_bytes = response['Body'].read()
+        # Raw PCM — parse sample rate from MIME (default 24 kHz)
+        sample_rate = 24000
+        if 'rate=' in mime:
+            try:
+                sample_rate = int(mime.split('rate=')[1].split(';')[0])
+            except ValueError:
+                pass
 
-                # Optional: Delete the file from S3 to save costs
-                # s3.delete_object(Bucket=bucket_name, Key=s3_key)
+        return PollyService._to_mp3_from_pcm(raw_audio, sample_rate)
 
-                return audio_bytes
+    # ── ffmpeg helpers ────────────────────────────────────────────────────────
 
-            elif status == 'failed':
-                reason = task_status['SynthesisTask'].get('TaskStatusReason', 'Unknown error')
-                raise Exception(f"Polly synthesis failed: {reason}")
+    @staticmethod
+    def _to_mp3_from_wav(wav_bytes: bytes) -> bytes:
+        """Convert WAV bytes → MP3 via ffmpeg (auto-detected input format)."""
+        return PollyService._run_ffmpeg(wav_bytes, '.wav', [])
 
-            # Wait before polling again
-            time.sleep(2)
+    @staticmethod
+    def _to_mp3_from_pcm(pcm_bytes: bytes, sample_rate: int) -> bytes:
+        """Convert raw signed-16-bit-LE mono PCM → MP3 via ffmpeg."""
+        pcm_args = ['-f', 's16le', '-ar', str(sample_rate), '-ac', '1']
+        return PollyService._run_ffmpeg(pcm_bytes, '.pcm', pcm_args)
+
+    @staticmethod
+    def _run_ffmpeg(audio_bytes: bytes, in_suffix: str, extra_input_args: list) -> bytes:
+        in_tmp = out_tmp = None
+        try:
+            in_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=in_suffix)
+            in_tmp.write(audio_bytes)
+            in_tmp.close()
+
+            out_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+            out_tmp.close()
+
+            cmd = ['ffmpeg', '-y'] + extra_input_args + ['-i', in_tmp.name, out_tmp.name]
+            result = subprocess.run(cmd, capture_output=True)
+
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"ffmpeg failed (exit {result.returncode}):\n"
+                    + result.stderr.decode(errors='replace')
+                )
+
+            mp3 = open(out_tmp.name, 'rb').read()
+            if not mp3:
+                raise RuntimeError("ffmpeg produced an empty MP3 file.")
+            return mp3
+        finally:
+            for path in (in_tmp, out_tmp):
+                if path and os.path.exists(path.name):
+                    try:
+                        os.remove(path.name)
+                    except OSError:
+                        pass

@@ -24,6 +24,8 @@ from app.services.text_service import TextService
 from app.services.gemini_service import GeminiService
 from app.services.search_service import SearchService
 from app.services.polly_service import PollyService
+from app.services.anki_service import AnkiService
+from app.services.vocabulary_service import VocabularyService as _VocabService
 
 pygame.mixer.init()
 
@@ -92,6 +94,33 @@ class _SpeedWorker(QThread):
                         pass
 
 
+class _AnkiWorker(QThread):
+    progress = pyqtSignal(int, int)   # (current, total)
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+
+    def __init__(self, user_id: int, output_path: str):
+        super().__init__()
+        self.user_id = user_id
+        self.output_path = output_path
+
+    def run(self):
+        try:
+            vocabs = _VocabService.get_unexported_by_user_id(self.user_id)
+            if not vocabs:
+                self.error.emit("All vocabulary has already been exported.\nNo new words to add.")
+                return
+            AnkiService.create_deck(
+                vocabs,
+                self.output_path,
+                progress_callback=lambda c, t: self.progress.emit(c, t),
+            )
+            _VocabService.mark_exported([v.id for v in vocabs])
+            self.finished.emit()
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
 # ── Controller ────────────────────────────────────────────────────────────────
 
 class MainController:
@@ -113,6 +142,7 @@ class MainController:
 
         self._polly_worker: _PollyWorker | None = None
         self._speed_worker: _SpeedWorker | None = None
+        self._anki_worker: _AnkiWorker | None = None
 
         # 200 ms poll for progress bar
         self._progress_timer = QTimer()
@@ -148,6 +178,7 @@ class MainController:
         self.main_window.play_btn.clicked.connect(self._handle_play_pause)
         self.main_window.speed_slider.valueChanged.connect(self._on_slider_moved)
         self.main_window.speed_slider.sliderReleased.connect(self._on_speed_changed)
+        self.main_window.anki_btn.clicked.connect(self._handle_anki_export)
 
     # ── Story selection ───────────────────────────────────────────────────────
 
@@ -179,7 +210,7 @@ class MainController:
             return
 
         self.main_window.download_btn.setEnabled(False)
-        self.main_window.download_btn.setText("…")
+        self.main_window.download_btn.setText("downloading …")
 
         self._polly_worker = _PollyWorker(post.content or post.title)
         self._polly_worker.finished.connect(self._on_audio_ready)
@@ -190,12 +221,12 @@ class MainController:
         SearchService.save_audio(self._current_post_id, self.session.user_id, audio)
         self._raw_audio_bytes = audio
         self._total_original_ms = self._read_duration_ms(audio)
-        self.main_window.download_btn.setText("⬇")
+        self.main_window.download_btn.setText("⬇ Download")
         self.main_window.download_btn.setEnabled(False)
         self._enable_audio_controls(True)
 
     def _on_audio_error(self, message: str):
-        self.main_window.download_btn.setText("⬇")
+        self.main_window.download_btn.setText("⬇ Download")
         self.main_window.download_btn.setEnabled(True)
         QMessageBox.critical(self.main_window, "Audio Error", f"Failed to generate audio:\n{message}")
 
@@ -267,16 +298,23 @@ class MainController:
         self._processed_speed = speed
         self._session_start_original_ms = seek_original_ms
 
-        # Write processed audio to temp file
         self._cleanup_tmp()
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
         tmp.write(processed_bytes)
         tmp.close()
         self._audio_tmp_path = tmp.name
 
-        seek_s = seek_original_ms / 1000.0 / speed  # position in processed audio
-        pygame.mixer.music.load(self._audio_tmp_path)
-        pygame.mixer.music.play(start=seek_s)
+        try:
+            seek_s = seek_original_ms / 1000.0 / speed
+            pygame.mixer.music.load(self._audio_tmp_path)
+            pygame.mixer.music.play(start=seek_s)
+        except Exception as exc:
+            self._reset_playback()
+            QMessageBox.critical(
+                self.main_window, "Playback Error",
+                f"pygame could not play the audio file:\n{exc}"
+            )
+            return
 
         self.main_window.play_btn.setText("⏸ Pause")
         self.main_window.play_btn.setEnabled(True)
@@ -339,6 +377,47 @@ class MainController:
             except OSError:
                 pass
         self._audio_tmp_path = None
+
+    # ── Anki export ───────────────────────────────────────────────────────────
+
+    def _handle_anki_export(self):
+        from PyQt6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(
+            self.main_window,
+            "Save Anki Deck",
+            "spanish_vocabulary.apkg",
+            "Anki Package (*.apkg)",
+        )
+        if not path:
+            return
+
+        self.main_window.anki_btn.setEnabled(False)
+        self.main_window.anki_btn.setText(" 0 / ?")
+
+        self._anki_export_count = 0
+        self._anki_worker = _AnkiWorker(self.session.user_id, path)
+        self._anki_worker.progress.connect(self._on_anki_progress)
+        self._anki_worker.finished.connect(self._on_anki_finished)
+        self._anki_worker.error.connect(self._on_anki_error)
+        self._anki_worker.start()
+
+    def _on_anki_progress(self, current: int, total: int):
+        self._anki_export_count = total
+        self.main_window.anki_btn.setText(f"⏳ {current} / {total}")
+
+    def _on_anki_finished(self):
+        self.main_window.anki_btn.setText("⬇ Anki Deck")
+        self.main_window.anki_btn.setEnabled(True)
+        QMessageBox.information(
+            self.main_window,
+            "Anki Deck Ready",
+            f"Exported {self._anki_export_count} new word(s) to your Anki deck.",
+        )
+
+    def _on_anki_error(self, message: str):
+        self.main_window.anki_btn.setText("⬇ Anki Deck")
+        self.main_window.anki_btn.setEnabled(True)
+        QMessageBox.critical(self.main_window, "Anki Export Failed", message)
 
     # ── Translation ───────────────────────────────────────────────────────────
 
