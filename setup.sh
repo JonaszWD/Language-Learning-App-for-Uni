@@ -44,23 +44,31 @@ echo "✓ Dependencies installed"
 if [ ! -f ".env" ]; then
     cp .env.example .env
     echo ""
-    echo "✓ Created .env file from .env.example"
-    echo ""
-    echo "  ┌─────────────────────────────────────────────────────┐"
-    echo "  │  ACTION REQUIRED: Open the .env file and add your   │"
-    echo "  │  API keys before running the app.                   │"
-    echo "  │                                                      │"
-    echo "  │  GEMINI_KEY  → https://aistudio.google.com/apikey   │"
-    echo "  │  DEEPL_KEY   → https://www.deepl.com/pro-api        │"
-    echo "  └─────────────────────────────────────────────────────┘"
-    echo ""
-else
-    echo "✓ .env file already exists"
+    echo "✓ Created config file (.env)"
 fi
 
 echo ""
 echo "=== Setup complete! ==="
 echo ""
-echo "To run the app:"
-echo "  Mac/Linux:  ./run_app.sh"
+echo "  ┌──────────────────────────────────────────────────────────┐"
+echo "  │  NEXT STEP: Add your API keys                            │"
+echo "  │                                                          │"
+echo "  │  A file called .env will now open in your text editor.  │"
+echo "  │  Fill in your keys, then save and close it.             │"
+echo "  │                                                          │"
+echo "  │  GEMINI_KEY  → https://aistudio.google.com/apikey       │"
+echo "  │  DEEPL_KEY   → https://www.deepl.com/pro-api            │"
+echo "  └──────────────────────────────────────────────────────────┘"
+echo ""
+
+# Open .env in the default text editor so the user can fill in their keys.
+# 'open' works on Mac; fall back to xdg-open on Linux.
+if command -v open &>/dev/null; then
+    open .env
+elif command -v xdg-open &>/dev/null; then
+    xdg-open .env
+fi
+
+echo "Once you have saved your API keys, run the app with:"
+echo "  bash run_app.sh"
 echo ""

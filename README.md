@@ -79,11 +79,9 @@ The install step may take a minute or two — that's normal. It's downloading th
 
 ### Step 4 — Add your API keys
 
-After setup, there will be a file called `.env` in the project folder. This is a plain text file that stores your secret keys — it never gets shared on GitHub.
+When the setup script finishes, it will automatically open a file in your text editor. This file stores your API keys so the app can connect to the translation services.
 
-> **Note:** Files starting with a dot (`.`) are hidden by default. On Mac, press **Cmd + Shift + .** in Finder to show hidden files. On Windows, go to View → Show → Hidden items in File Explorer.
-
-Open `.env` with any text editor (Notepad on Windows, TextEdit on Mac) and replace the placeholder values with your actual keys:
+Replace the placeholder values with your actual keys:
 
 ```
 GEMINI_KEY=paste_your_gemini_key_here
@@ -92,6 +90,8 @@ DATABASE_URL=sqlite:///./app.db
 ```
 
 Make sure there are no spaces around the `=` signs, and don't add any quotes around the keys. Save the file when done.
+
+> **If the file didn't open automatically:** it's saved as `.env` in the project folder. Files starting with a dot are hidden by default — on Mac press **Cmd + Shift + .** in Finder to show them, on Windows go to View → Show → Hidden items.
 
 ---
 
@@ -120,8 +120,8 @@ Python isn't installed, or the installer wasn't set up correctly. Re-install Pyt
 **"No module named ..." or similar errors**
 The dependencies weren't installed properly. Re-run the setup commands from Step 3.
 
-**The `.env` file doesn't appear in the folder**
-Hidden files aren't showing. On Mac press **Cmd + Shift + .** to reveal them. On Windows go to View → Show → Hidden items.
+**The API keys file didn't open after setup**
+It's saved as `.env` in the project folder but is hidden by default. On Mac press **Cmd + Shift + .** in Finder to reveal it. On Windows go to View → Show → Hidden items in File Explorer.
 
 **App opens but translations don't work**
 Your API keys are likely missing or have a typo. Open `.env` and double-check that each key is pasted correctly with no extra spaces or quote marks.
