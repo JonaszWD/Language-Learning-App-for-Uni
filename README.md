@@ -4,6 +4,40 @@ A desktop app for learning Spanish vocabulary. Built with Python and PyQt6 for a
 
 Features include looking up words, saving vocabulary, generating Anki flashcard decks, and AI-powered translations via Google Gemini and DeepL.
 
+[![CI](https://github.com/JonaszWD/Language-Learning-App-for-Uni/actions/workflows/ci.yml/badge.svg)](https://github.com/JonaszWD/Language-Learning-App-for-Uni/actions/workflows/ci.yml)
+
+## What it does
+
+- **Reading with instant translation:** paste or generate a Spanish text and translate it with DeepL.
+- **AI-generated stories:** Gemini writes a short story at a chosen level and word count.
+- **Vocabulary deck:** save words per user account and export them as an **Anki** deck with spoken audio (Gemini TTS).
+- **Accounts:** register and log in; passwords are hashed with bcrypt.
+
+## How it is built
+
+| Layer | What lives there |
+|---|---|
+| `app/views` | PyQt6 windows, panels and widgets |
+| `app/controllers` | Glue between views and services |
+| `app/services` | Business logic and external APIs (Gemini, DeepL, Anki export) |
+| `app/repositories` | All database queries (SQLAlchemy) |
+| `app/models` | SQLAlchemy models and Alembic migrations |
+
+Python 3, PyQt6, SQLAlchemy + Alembic (PostgreSQL or SQLite), bcrypt, genanki, Google Gemini, DeepL.
+
+## Tests
+
+```
+pip install -r requirements-dev.txt bcrypt sqlalchemy python-dotenv deepl
+python -m pytest
+```
+
+The tests cover password hashing, the user repository (in-memory SQLite) and input handling in the text service; CI runs them on every push.
+
+---
+
+# Setup guide for non-programmers
+
 ---
 
 ## Before You Start

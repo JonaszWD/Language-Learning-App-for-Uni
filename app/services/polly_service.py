@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-load_dotenv("/Users/jojo/PycharmProjects/IntroToProgrammingProject/.env")
+load_dotenv()
 
 _GEMINI_TTS_MODEL = 'gemini-3.1-flash-preview-tts'
 

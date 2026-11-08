@@ -1,7 +1,11 @@
+"""Standalone demo: synthesise a short Spanish phrase with Gemini TTS and save out.wav.
+
+Run from the project root:  python scripts/gemini_tts_demo.py
+"""
 from google import genai
 import os
 from dotenv import load_dotenv
-load_dotenv("/Users/jojo/PycharmProjects/IntroToProgrammingProject/.env")
+load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_KEY"))
 from google.genai import types
